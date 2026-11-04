@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HOMEO-CORE 11 | Fisiología Endocrina y Homeostasis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    :root {
+      --bg-clinical: #060a12;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-clinical);
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(20, 184, 166, 0.14) 0%, transparent 35%),
+        radial-gradient(circle at 88% 82%, rgba(99, 102, 241, 0.14) 0%, transparent 35%),
+        linear-gradient(rgba(15, 23, 42, 0.85) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.85) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 26px 26px, 26px 26px;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .font-sci {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(45, 212, 191, 0.25);
+      box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.75);
+    }
+
+    .ecg-line {
+      stroke-dasharray: 400;
+      stroke-dashoffset: 400;
+      animation: dashECG 3s linear infinite;
+    }
+
+    @keyframes dashECG {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff; color: #000000; }
+      .glass-panel { background: #ffffff; border: 2px solid #0f172a; color: #000000; box-shadow: none; }
+    }
+  </style>
+</head>
+<body class="p-3 md:p-6">
+
+  <div class="max-w-5xl mx-auto">
+
+    <!-- HUD DE MONITOREO FISIOLÓGICO -->
+    <header id="hud-bar" class="glass-panel rounded-2xl p-4 mb-6 hidden no-print">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-2xl">
+            🩺
+          </div>
+          <div>
+            <div class="text-xs uppercase tracking-widest text-teal-400 font-sci">Monitor UCI Neuroendocrino</div>
+            <div id="hud-player" class="font-bold text-white text-lg">Endocrinólogo</div>
+            <span id="hud-rank" class="inline-block text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-semibold">
+              Rango: Médico Residente
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 sm:gap-5 flex-1 max-w-xl">
+          <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-2.5 text-center">
+            <div class="text-[11px] text-slate-400 uppercase">Mérito Clínico</div>
+            <div class="font-sci font-bold text-cyan-400 text-lg"><span id="hud-xp">0</span> XP</div>
+          </div>
+
+          <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-2.5 text-center">
+            <div class="text-[11px] text-slate-400 uppercase">Reserva Bio-ATP</div>
+            <div class="font-sci font-bold text-amber-400 text-lg"><span id="hud-atp">160</span> ATP</div>
+          </div>
+
+          <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl p-2.5 text-center">
+            <div class="text-[11px] text-slate-400 uppercase">Homeostasis Paciente</div>
+            <div class="font-sci font-bold text-emerald-400 text-lg"><span id="hud-hp">100</span>%</div>
+            <div class="w-full bg-slate-800 h-1.5 rounded-full mt-1 overflow-hidden">
+              <div id="hud-hp-bar" class="bg-emerald-400 h-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progreso de Niveles -->
+      <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+        <div id="step-1" class="flex items-center gap-1.5 text-teal-400 font-bold">
+          <span class="w-5 h-5 rounded-full bg-teal-500/30 border border-teal-400 flex items-center justify-center">1</span>
+          <span class="hidden sm:inline">Control Glucémico</span>
+        </div>
+        <div class="flex-1 h-0.5 bg-slate-800 mx-2"></div>
+        <div id="step-2" class="flex items-center gap-1.5 text-slate-500">
+          <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">2</span>
+          <span class="hidden sm:inline">Eje H-H-Tiroides</span>
+        </div>
+        <div class="flex-1 h-0.5 bg-slate-800 mx-2"></div>
+        <div id="step-3" class="flex items-center gap-1.5 text-slate-500">
+          <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">3</span>
+          <span class="hidden sm:inline">Osmorregulación</span>
+        </div>
+        <div class="flex-1 h-0.5 bg-slate-800 mx-2"></div>
+        <div id="step-4" class="flex items-center gap-1.5 text-slate-500">
+          <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">4</span>
+          <span class="hidden sm:inline">Estrés y Bucles</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- PANTALLA DE INICIO -->
+    <section id="screen-start" class="glass-panel rounded-3xl p-6 md:p-10 text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-semibold mb-4">
+        SIMULADOR CLÍNICO POR NIVELES • SISTEMA ENDOCRINO Y HOMEOSTASIS • GRADO 11°
+      </div>
+      <h1 class="font-sci text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-cyan-300 to-indigo-400 mb-4">
+        HOMEO-CORE 11: UCI ENDOCRINA
+      </h1>
+      <p class="text-slate-300 max-w-2xl mx-auto text-sm md:text-base leading-relaxed mb-6">
+        Un paciente ingresa a la Unidad de Alta Complejidad con múltiples descompensaciones fisiológicas. Como líder de endocrinología, debes superar <strong>4 niveles críticos</strong> restableciendo el equilibrio interno (<strong>Homeostasis</strong>) mediante el manejo de ejes hormonales, receptores celulares y circuitos de retroalimentación.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-left max-w-3xl mx-auto mb-8">
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-teal-400 font-bold text-xs uppercase font-sci">Nivel 1</div>
+          <div class="font-semibold text-white text-sm mt-0.5">Páncreas & Glucemia</div>
+          <p class="text-xs text-slate-400 mt-1">Regula crisis de hiper e hipoglucemia con Insulina, Glucagón y transportadores GLUT4.</p>
+        </div>
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-cyan-400 font-bold text-xs uppercase font-sci">Nivel 2</div>
+          <div class="font-semibold text-white text-sm mt-0.5">Eje Tiroides (TRH-TSH)</div>
+          <p class="text-xs text-slate-400 mt-1">Interpreta análisis clínicos de T3/T4 y regula la tasa metabólica y temperatura corporal.</p>
+        </div>
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-indigo-400 font-bold text-xs uppercase font-sci">Nivel 3</div>
+          <div class="font-semibold text-white text-sm mt-0.5">ADH & Aldosterona</div>
+          <p class="text-xs text-slate-400 mt-1">Restaura la osmolaridad sanguínea y la presión arterial activando acuaporinas renales.</p>
+        </div>
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+          <div class="text-amber-400 font-bold text-xs uppercase font-sci">Nivel 4</div>
+          <div class="font-semibold text-white text-sm mt-0.5">Jefe Fisiológico</div>
+          <p class="text-xs text-slate-400 mt-1">Domina el eje del Cortisol, retroalimentación positiva (Oxitocina) y disruptores hormonales.</p>
+        </div>
+      </div>
+
+      <div class="max-w-md mx-auto bg-slate-900/90 p-5 rounded-2xl border border-slate-700/80">
+        <label class="block text-left text-xs uppercase tracking-wider text-slate-400 mb-2 font-semibold">
+          Nombre del Médico(a) Residente o Equipo (Grado 11°):
+        </label>
+        <input id="input-player-name" type="text" placeholder="Ej. Camilo R. / Equipo Endocrino 11A"
+          class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-teal-400 mb-4 text-sm" />
+        <button onclick="startGame()"
+          class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-sci font-bold tracking-wider transition transform hover:scale-[1.01]">
+          INGRESAR A UNIDAD HOMEO-CORE ▶
+        </button>
+      </div>
+    </section>
+
+    <!-- ALERTA DE RETROALIMENTACIÓN CLÍNICA -->
+    <div id="feedback-toast" class="hidden glass-panel rounded-2xl p-4 mb-5 border-l-4 transition-all">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h4 id="feedback-title" class="font-bold text-sm uppercase tracking-wider"></h4>
+          <p id="feedback-text" class="text-sm text-slate-200 mt-1"></p>
+        </div>
+        <button onclick="closeFeedback()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800">Cerrar</button>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         NIVEL 1: HOMEOSTASIS GLUCÉMICA (PÁNCREAS ENDOCRINO)
+    ====================================================== -->
+    <section id="level-1" class="hidden glass-panel rounded-3xl p-5 md:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-sci uppercase text-teal-400">Nivel 1 de 4 • Regulación Metabólica y Glicemia</span>
+          <h2 class="text-xl md:text-2xl font-bold text-white mt-0.5">Crisis Hiperglucémica y Antagonismo Insulina-Glucagón</h2>
+        </div>
+        <span class="text-xs bg-teal-500/15 text-teal-300 border border-teal-500/30 px-3 py-1 rounded-full">
+          Valor Normal Glucemia en Ayunas: 70 – 110 mg/dL
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Monitor SVG de Glucosa -->
+        <div class="bg-slate-950 border border-teal-500/40 rounded-2xl p-4">
+          <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+            <span class="font-mono-code">SENSOR CONTINUO DE GLUCOSA EN SANGRE</span>
+            <span class="text-rose-400 font-bold animate-pulse">ALERTA: 248 mg/dL (HIPERGLUCEMIA)</span>
+          </div>
+          <svg viewBox="0 0 420 170" class="w-full bg-slate-900/90 rounded-xl border border-slate-800 p-2">
+            <!-- Zona de Homeostasis Normal (70-110 mg/dL) -->
+            <rect x="35" y="85" width="370" height="35" fill="rgba(16, 185, 129, 0.14)" />
+            <line x1="35" y1="85" x2="405" y2="85" stroke="#10b981" stroke-dasharray="4,4" stroke-width="1" />
+            <line x1="35" y1="120" x2="405" y2="120" stroke="#10b981" stroke-dasharray="4,4" stroke-width="1" />
+            <text x="42" y="106" fill="#34d399" font-size="9" font-weight="bold">Rango Homeostático (70 - 110 mg/dL)</text>
+
+            <!-- Ejes -->
+            <text x="5" y="40" fill="#f43f5e" font-size="9">250</text>
+            <text x="5" y="90" fill="#10b981" font-size="9">110</text>
+            <text x="5" y="123" fill="#10b981" font-size="9">70</text>
+            <text x="5" y="155" fill="#f59e0b" font-size="9">40</text>
+
+            <!-- Curva de hiperglucemia actual -->
+            <path d="M 35 105 Q 95 100, 140 50 T 260 35 L 380 35" fill="none" stroke="#f43f5e" stroke-width="3" class="ecg-line" />
+            <circle cx="380" cy="35" r="5" fill="#f43f5e" />
+            <text x="275" y="25" fill="#fda4af" font-size="10" font-weight="bold">Glucemia: 248 mg/dL</text>
+          </svg>
+          <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+            <strong>Contexto Fisiológico:</strong> Tras una ingesta masiva de carbohidratos, la concentración plasmática de glucosa subió a <strong>248 mg/dL</strong>. Además, debes prever qué hacer si en 6 horas de ayuno el paciente cae a <strong>50 mg/dL</strong>.
+          </p>
+        </div>
+
+        <!-- Toma de Decisiones Nivel 1 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div>
+            <label class="text-xs font-bold text-teal-300 uppercase block mb-1">
+              1. Respuesta ante Hiperglucemia (248 mg/dL):
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              ¿Qué células de los Islotes de Langerhans detectan el exceso de glucosa y qué hormona secretan a la sangre?
+            </p>
+            <select id="g1-cell" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona célula pancreática y hormona --</option>
+              <option value="alpha">Células Alfa (α) → Secretan Glucagón</option>
+              <option value="beta">Células Beta (β) → Secretan Insulina</option>
+              <option value="delta">Células Acinares → Secretan Tripsina al duodeno</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-cyan-300 uppercase block mb-1">
+              2. Mecanismo Molecular en Células Diana (Músculo e Hígado):
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              Cuando la insulina se une a su receptor tirosina-quinasa de membrana, ¿qué proceso bioquímico activa para reducir la glucosa en sangre?
+            </p>
+            <select id="g1-mech" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona el mecanismo celular --</option>
+              <option value="glut4">Translocación de transportadores GLUT4 a la membrana y síntesis de glucógeno (glucogenogénesis)</option>
+              <option value="glucogenolisis">Ruptura del glucógeno hepático (glucogenólisis) para liberar más glucosa a la sangre</option>
+              <option value="lipolisis">Bloqueo total de la glucólisis celular</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-purple-300 uppercase block mb-1">
+              3. Contrarregulación en Hipoglucemia (< 60 mg/dL) y Tipo de Control:
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              Si la glucemia baja demasiado en ayuno, ¿qué hormona antagonista activa la <strong>glucogenólisis hepática</strong> y qué tipo de retroalimentación mantiene este equilibrio?
+            </p>
+            <select id="g1-loop" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona hormona antagonista y bucle --</option>
+              <option value="correct">Glucagón (células Alfa) • Bucle de Retroalimentación Negativa</option>
+              <option value="wrong1">Oxitocina (neurohipófisis) • Bucle de Retroalimentación Positiva</option>
+              <option value="wrong2">Calcitonina (tiroides) • Bucle de Amplificación Infinita</option>
+            </select>
+          </div>
+
+          <button onclick="verifyLevel1()" class="w-full py-3 px-4 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-sci font-bold text-xs uppercase tracking-wider transition">
+            Estabilizar Glucemia Sanguínea (Costo: 35 ATP)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================
+         NIVEL 2: EJE HIPOTÁLAMO-HIPÓFISIS-TIROIDES (METABOLISMO)
+    ====================================================== -->
+    <section id="level-2" class="hidden glass-panel rounded-3xl p-5 md:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-sci uppercase text-cyan-400">Nivel 2 de 4 • Eje Neuroendocrino y Termorregulación</span>
+          <h2 class="text-xl md:text-2xl font-bold text-white mt-0.5">Fallo en el Eje Hipotálamo – Hipófisis – Tiroides (HHT)</h2>
+        </div>
+        <span class="text-xs bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-full">
+          Alerta Clínica: Hipotermia (35.2 °C) y Bradicardia
+        </span>
+      </div>
+
+      <p class="text-slate-300 text-sm leading-relaxed mb-5">
+        <strong>Evolución del Paciente:</strong> La glucemia ya es normal, pero la temperatura corporal cae a <strong>35.2 °C</strong>, el metabolismo basal se desploma y el paciente presenta fatiga severa. Observa el resultado del laboratorio endocrino y el diagrama del eje regulador:
+      </p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-center">
+        <!-- Panel de Laboratorio y Diagrama del Eje HHT -->
+        <div class="bg-slate-950 border border-cyan-500/40 rounded-2xl p-5">
+          <h3 class="font-sci text-xs uppercase text-cyan-400 mb-3">Panel Hormonal Sérico del Paciente</h3>
+          <div class="grid grid-cols-3 gap-2 text-center mb-4">
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[11px] text-slate-400">TRH (Hipotálamo)</div>
+              <div class="text-amber-400 font-bold text-sm mt-0.5">▲ ELEVADA</div>
+            </div>
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[11px] text-slate-400">TSH (Adenohipófisis)</div>
+              <div class="text-rose-400 font-bold text-sm mt-0.5">▲▲ MUY ALTA (18 mUI/L)</div>
+            </div>
+            <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+              <div class="text-[11px] text-slate-400">T4 Libre (Tiroides)</div>
+              <div class="text-cyan-400 font-bold text-sm mt-0.5">▼▼ MUY BAJA (0.2 ng/dL)</div>
+            </div>
+          </div>
+
+          <!-- Esquema SVG del Eje HHT -->
+          <svg viewBox="0 0 380 185" class="w-full bg-slate-900/70 rounded-xl p-2 border border-slate-800">
+            <!-- Cajas del Eje -->
+            <rect x="115" y="10" width="150" height="34" rx="6" fill="#0f172a" stroke="#38bdf8" />
+            <text x="190" y="31" fill="#e0f2fe" font-size="11" font-weight="bold" text-anchor="middle">HIPOTÁLAMO (TRH)</text>
+
+            <line x1="190" y1="44" x2="190" y2="72" stroke="#38bdf8" stroke-width="2" />
+            <text x="200" y="62" fill="#38bdf8" font-size="10">(+) Estimula</text>
+
+            <rect x="105" y="72" width="170" height="34" rx="6" fill="#0f172a" stroke="#818cf8" />
+            <text x="190" y="93" fill="#e0e7ff" font-size="11" font-weight="bold" text-anchor="middle">ADENOHIPÓFISIS (TSH)</text>
+
+            <line x1="190" y1="106" x2="190" y2="134" stroke="#818cf8" stroke-width="2" />
+            <text x="200" y="124" fill="#818cf8" font-size="10">(+) Estimula</text>
+
+            <rect x="105" y="134" width="170" height="36" rx="6" fill="#0f172a" stroke="#f43f5e" />
+            <text x="190" y="156" fill="#fecdd3" font-size="11" font-weight="bold" text-anchor="middle">GLÁNDULA TIROIDES (T3/T4)</text>
+
+            <!-- Bucle de Retroalimentación Negativa Roto -->
+            <path d="M 105 152 C 30 152, 30 27, 115 27" fill="none" stroke="#f43f5e" stroke-width="2" stroke-dasharray="4,4" />
+            <text x="18" y="95" fill="#fb7185" font-size="9" font-weight="bold">(-) Inhibición</text>
+            <text x="18" y="107" fill="#fb7185" font-size="9">Ausente</text>
+          </svg>
+        </div>
+
+        <!-- Preguntas Clínicas Nivel 2 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div>
+            <label class="text-xs font-bold text-cyan-300 uppercase block mb-1">
+              1. Diagnóstico del Eje (Análisis Tipo Saber 11):
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              ¿Por qué la hormona hipofisaria <strong>TSH está tan elevada</strong> si las hormonas tiroideas <strong>T3 y T4 están bajas</strong>?
+            </p>
+            <select id="t2-diag" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona la explicación fisiológica --</option>
+              <option value="correct">Existe un hipotiroidismo primario (fallo en la tiroides): al no producirse T3/T4, desaparece el freno de retroalimentación negativa sobre la hipófisis, por lo que esta secreta más TSH intentando estimularla.</option>
+              <option value="wrong1">La adenohipófisis dejó de funcionar y por eso produce exceso de TSH por retroalimentación positiva.</option>
+              <option value="wrong2">El exceso de TSH destruye el yodo en la sangre impidiendo la glucólisis.</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-teal-300 uppercase block mb-1">
+              2. Naturaleza Química y Receptor de las Hormonas Tiroideas (T3/T4):
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              A diferencia de la TSH (peptídica, receptor de membrana), las hormonas T3 y T4 son liposolubles. ¿Cómo actúan en las células diana?
+            </p>
+            <select id="t2-receptor" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona el mecanismo de recepción celular --</option>
+              <option value="wrong1">No pueden entrar a la célula y rebotan en la bicapa lipídica.</option>
+              <option value="correct">Atraviesan la bicapa lipídica y se unen a receptores intracelulares/nucleares, regulando la transcripción génica y aumentando la actividad mitocondrial (calorigénesis).</option>
+              <option value="wrong2">Se convierten en neurotransmisores en la médula espinal.</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-emerald-300 uppercase block mb-1">
+              3. Intervención Terapéutica y Efecto en TSH:
+            </label>
+            <p class="text-xs text-slate-400 mb-2">
+              Si administras <strong>Levotiroxina (T4 sintética)</strong> y micronutrientes de Yodo al paciente, ¿qué ocurrirá con los niveles de TSH en sangre al restablecerse la homeostasis?
+            </p>
+            <select id="t2-therapy" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+              <option value="">-- Selecciona la respuesta del eje --</option>
+              <option value="correct">La TSH disminuirá hasta su rango normal porque la T4 restaurará la inhibición por retroalimentación negativa sobre hipotálamo e hipófisis.</option>
+              <option value="wrong1">La TSH subirá al doble para competir con la T4 administrada.</option>
+              <option value="wrong2">El páncreas dejará de secretar insulina permanentemente.</option>
+            </select>
+          </div>
+
+          <button onclick="verifyLevel2()" class="w-full py-3 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-sci font-bold text-xs uppercase tracking-wider transition">
+            Restaurar Eje H-H-Tiroides (Costo: 40 ATP)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================
+         NIVEL 3: OSMORREGULACIÓN Y EQUILIBRIO HIDROELECTROLÍTICO
+    ====================================================== -->
+    <section id="level-3" class="hidden glass-panel rounded-3xl p-5 md:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-sci uppercase text-indigo-400">Nivel 3 de 4 • Homeostasis Renal e Hidroelectrolítica</span>
+          <h2 class="text-xl md:text-2xl font-bold text-white mt-0.5">Deshidratación Hiperosmolar: ADH (Vasopresina) y Aldosterona</h2>
+        </div>
+        <span class="text-xs bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full">
+          Osmolaridad Actual: 320 mOsm/L (Alta) • PA: 84/52 mmHg (Baja)
+        </span>
+      </div>
+
+      <p class="text-slate-300 text-sm leading-relaxed mb-6">
+        <strong>Alerta Hemodinámica:</strong> El paciente presenta deshidratación severa: su sangre está altamente concentrada en solutos (<strong>hiperosmolaridad plasmática</strong>) y su volumen sanguíneo cayó provocando <strong>hipotensión arterial</strong>. Debes coordinar la respuesta entre el <strong>Hipotálamo/Neurohipófisis</strong>, la <strong>Corteza Suprarrenal</strong> y los <strong>Nefrones del Riñón</strong>.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- Selección 1: ADH -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+          <label class="text-xs font-bold text-indigo-300 uppercase block mb-2">
+            1. Respuesta Neuroendocrina a la Hiperosmolaridad:
+          </label>
+          <p class="text-xs text-slate-400 mb-3">
+            Los osmorreceptores del hipotálamo detectan la sangre concentrada. ¿Qué hormona se libera desde la <strong>Neurohipófisis</strong>?
+          </p>
+          <select id="o3-adh" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Elige la hormona --</option>
+            <option value="correct">Hormona Antidiurética (ADH o Vasopresina)</option>
+            <option value="wrong1">Hormona del Crecimiento (GH / Somatotropina)</option>
+            <option value="wrong2">Prolactina (PRL)</option>
+          </select>
+        </div>
+
+        <!-- Selección 2: Acción en el Túbulo Colector -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+          <label class="text-xs font-bold text-cyan-300 uppercase block mb-2">
+            2. Acción Molecular en el Nefrón (Túbulo Colector):
+          </label>
+          <p class="text-xs text-slate-400 mb-3">
+            ¿Cómo logra la ADH evitar que el paciente siga perdiendo agua en la orina?
+          </p>
+          <select id="o3-aqp" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Elige el mecanismo renal --</option>
+            <option value="wrong1">Destruye los glomérulos para bloquear toda filtración renal.</option>
+            <option value="correct">Estimula la inserción de canales de agua (Acuaporinas-2) en el túbulo colector, reabsorbiendo agua hacia la sangre y produciendo menor volumen de orina concentrada.</option>
+            <option value="wrong2">Aumenta la excreción masiva de agua produciendo orina muy diluida (diuresis).</option>
+          </select>
+        </div>
+
+        <!-- Selección 3: Aldosterona -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+          <label class="text-xs font-bold text-emerald-300 uppercase block mb-2">
+            3. Sinergia con la Corteza Suprarrenal (Eje RAA):
+          </label>
+          <p class="text-xs text-slate-400 mb-3">
+            Para recuperar la presión arterial, se activa el sistema Renina-Angiotensina-Aldosterona. ¿Qué hace la hormona esteroidea <strong>Aldosterona</strong> en el nefrón?
+          </p>
+          <select id="o3-aldo" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Elige la función de la Aldosterona --</option>
+            <option value="correct">Aumenta la reabsorción de iones Sodio (Na+) hacia la sangre (y excreción de K+), lo que arrastra agua por ósmosis y eleva la volemia y presión arterial.</option>
+            <option value="wrong1">Elimina todo el Sodio (Na+) del cuerpo en la orina para bajar más la presión.</option>
+            <option value="wrong2">Convierte la urea en glucógeno dentro de la vejiga.</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="verifyLevel3()" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-slate-950 font-sci font-bold text-xs uppercase tracking-wider transition">
+        Ejecutar Protocolo de Osmorregulación Renal (Costo: 40 ATP)
+      </button>
+    </section>
+
+    <!-- =====================================================
+         NIVEL 4: JEFE FINAL — ESTRÉS, BUCLES Y DISRUPTORES
+    ====================================================== -->
+    <section id="level-4" class="hidden glass-panel rounded-3xl p-5 md:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <span class="text-xs font-sci uppercase text-amber-400">Nivel 4 de 4 • Integración Neuroendocrina Avanzada</span>
+          <h2 class="text-xl md:text-2xl font-bold text-white mt-0.5">Jefe Final: Eje del Estrés, Retroalimentación Positiva y Farmacología</h2>
+        </div>
+        <span class="text-xs bg-amber-500/15 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-full">
+          Junta Médica de Alta Complejidad (-25 ATP)
+        </span>
+      </div>
+
+      <p class="text-slate-300 text-sm leading-relaxed mb-6">
+        <strong>Evaluación Final de Guardia:</strong> Para dar de alta al paciente y recibir tu acreditación como Maestro de la Homeostasis, resuelve estos <strong>3 casos integradores</strong> sobre el eje Hipotálamo-Hipófisis-Suprarrenal, la diferencia entre retroalimentación negativa y positiva, y el impacto de hormonas exógenas.
+      </p>
+
+      <div class="space-y-4 mb-6">
+        <!-- Caso 1: Cortisol vs Adrenalina -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
+          <h4 class="text-xs font-sci uppercase text-amber-400 mb-1">Caso 1 • Eje Hipotálamo – Hipófisis (ACTH) – Corteza Suprarrenal (Cortisol)</h4>
+          <p class="text-xs text-slate-300 mb-3">
+            Mientras la médula suprarrenal libera Adrenalina en segundos ante una amenaza aguda, la corteza suprarrenal libera <strong>Cortisol</strong> (estimulada por la ACTH hipofisaria). ¿Por qué un exceso crónico de Cortisol provoca hiperglucemia e inmunosupresión?
+          </p>
+          <select id="f4-cortisol" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Selecciona el efecto fisiológico del Cortisol --</option>
+            <option value="correct">Porque el Cortisol estimula la gluconeogénesis hepática (síntesis de glucosa a partir de aminoácidos y lípidos), antagoniza a la insulina e inhibe mediadores inflamatorios del sistema inmune.</option>
+            <option value="wrong1">Porque el Cortisol destruye el hígado e impide que se absorba oxígeno en los alvéolos.</option>
+            <option value="wrong2">Porque el Cortisol actúa exactamente igual que la insulina guardando toda la glucosa en el tejido adiposo.</option>
+          </select>
+        </div>
+
+        <!-- Caso 2: Retroalimentación Positiva -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
+          <h4 class="text-xs font-sci uppercase text-teal-400 mb-1">Caso 2 • Retroalimentación Negativa vs. Retroalimentación Positiva</h4>
+          <p class="text-xs text-slate-300 mb-3">
+            Casi toda la homeostasis endocrina opera por retroalimentación negativa (el producto frena al estímulo). Sin embargo, ¿cuál de los siguientes procesos fisiológicos humanos es un ejemplo real de <strong>Retroalimentación Positiva</strong>?
+          </p>
+          <select id="f4-positive" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Selecciona el bucle de retroalimentación positiva --</option>
+            <option value="wrong1">La regulación del calcio en sangre entre la Parathormona (PTH) y la Calcitonina.</option>
+            <option value="correct">El reflejo de Ferguson en el parto: la presión del bebé en el cérvix estimula la liberación de Oxitocina, la cual aumenta las contracciones uterinas, generando más presión y más liberación de Oxitocina hasta el nacimiento.</option>
+            <option value="wrong2">La disminución de sudoración cuando la temperatura corporal vuelve a 36.5 °C.</option>
+          </select>
+        </div>
+
+        <!-- Caso 3: Disruptores / Esteroides Exógenos -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4">
+          <h4 class="text-xs font-sci uppercase text-indigo-400 mb-1">Caso 3 • Endocrinología Clínica: Uso de Esteroides Anabólicos Exógenos</h4>
+          <p class="text-xs text-slate-300 mb-3">
+            Un deportista joven se inyecta altas dosis de testosterona sintética sin prescripción médica. Meses después, presenta <strong>atrofia testicular e infertilidad</strong>. ¿Qué mecanismo endocrino explica esta consecuencia?
+          </p>
+          <select id="f4-steroids" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white">
+            <option value="">-- Selecciona el análisis del eje gonadal --</option>
+            <option value="correct">El exceso de testosterona exógena inhibe por retroalimentación negativa al hipotálamo (baja GnRH) y a la adenohipófisis (bajan LH y FSH); sin estímulo de LH y FSH, los testículos dejan de producir testosterona endógena y espermatozoides.</option>
+            <option value="wrong1">La testosterona sintética estimula a la hipófisis a producir tanta FSH que las gónadas se calcifican.</option>
+            <option value="wrong2">Los esteroides bloquean los canales de sodio del riñón causando diabetes tipo 1.</option>
+          </select>
+        </div>
+      </div>
+
+      <button onclick="verifyLevel4()" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-amber-400 to-teal-400 hover:from-amber-300 hover:to-teal-300 text-slate-950 font-sci font-bold text-xs uppercase tracking-wider transition">
+        Emitir Alta Médica y Certificar Homeostasis (Costo: 25 ATP)
+      </button>
+    </section>
+
+    <!-- =====================================================
+         PANTALLA DE VICTORIA Y REPORTE CLÍNICO IMPRIMIBLE
+    ====================================================== -->
+    <section id="screen-victory" class="hidden glass-panel rounded-3xl p-6 md:p-10">
+      <div class="text-center border-b border-slate-800 pb-6 mb-6">
+        <div class="text-5xl mb-3">🏆🩺</div>
+        <div class="text-xs font-sci uppercase tracking-widest text-teal-400">Unidad de Fisiología Endocrina HOMEO-CORE 11</div>
+        <h2 class="font-sci text-2xl md:text-4xl font-black text-white mt-1">CERTIFICADO DE ALTA HOMEOSTÁTICA</h2>
+        <p class="text-slate-400 text-sm mt-1">Reporte de Competencias en Sistema Endocrino y Regulación Fisiológica • Grado 11°</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-xs text-slate-400">Especialista / Equipo</div>
+          <div id="cert-name" class="font-bold text-white text-base mt-1">-</div>
+        </div>
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-xs text-slate-400">Rango Alcanzado</div>
+          <div id="cert-rank" class="font-sci font-bold text-teal-400 text-sm mt-1">-</div>
+        </div>
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-xs text-slate-400">Mérito Clínico</div>
+          <div id="cert-xp" class="font-sci font-bold text-cyan-400 text-xl mt-1">0 XP</div>
+        </div>
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 text-center">
+          <div class="text-xs text-slate-400">Homeostasis Final</div>
+          <div id="cert-hp" class="font-sci font-bold text-emerald-400 text-xl mt-1">100%</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-6 text-sm space-y-2.5">
+        <h3 class="font-sci text-xs uppercase text-teal-400 mb-2">Resumen de Sistemas Fisiológicos Estabilizados:</h3>
+        <p class="text-slate-300">✅ <strong>Nivel 1 (Homeostasis Glucémica):</strong> Regulación antagónica entre Insulina (células β, translocación GLUT4 y glucogenogénesis) y Glucagón (células α, glucogenólisis hepática) mediante retroalimentación negativa.</p>
+        <p class="text-slate-300">✅ <strong>Nivel 2 (Eje H-H-Tiroides):</strong> Diagnóstico de hipotiroidismo primario (TSH elevada por pérdida de inhibición de T3/T4) y acción de hormonas liposolubles sobre receptores intracelulares.</p>
+        <p class="text-slate-300">✅ <strong>Nivel 3 (Osmorregulación):</strong> Control de la osmolaridad plasmática con ADH/Vasopresina (inserción de Acuaporinas-2 en túbulo colector) y recuperación de la presión arterial mediante Aldosterona (reabsorción de Na+).</p>
+        <p class="text-slate-300">✅ <strong>Nivel 4 (Integración y Bucles):</strong> Fisiología del Cortisol en el estrés crónico, distinción de retroalimentación positiva (Oxitocina en el parto) e inhibición del eje H-H-Gonadal por esteroides exógenos.</p>
+      </div>
+
+      <div class="flex flex-wrap justify-center gap-4 no-print">
+        <button onclick="window.print()" class="py-3 px-6 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-sci font-bold text-xs uppercase tracking-wider transition">
+          🖨️ Imprimir / Guardar Certificado en PDF
+        </button>
+        <button onclick="location.reload()" class="py-3 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-sci font-bold text-xs uppercase tracking-wider transition">
+          🔄 Nuevo Caso Clínico
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const state = {
+      playerName: 'Endocrinólogo 11°',
+      xp: 0,
+      atp: 160,
+      hp: 100,
+      currentLevel: 1
+    };
+
+    function getRank(xp) {
+      if (xp >= 450) return 'Maestro de la Homeostasis';
+      if (xp >= 300) return 'Jefe de Endocrinología';
+      if (xp >= 140) return 'Fisiólogo Clínico Senior';
+      return 'Médico Residente';
+    }
+
+    function updateHUD() {
+      document.getElementById('hud-player').textContent = state.playerName;
+      document.getElementById('hud-xp').textContent = state.xp;
+      document.getElementById('hud-atp').textContent = state.atp;
+      document.getElementById('hud-hp').textContent = state.hp;
+      document.getElementById('hud-rank').textContent = 'Rango: ' + getRank(state.xp);
+
+      const hpBar = document.getElementById('hud-hp-bar');
+      hpBar.style.width = state.hp + '%';
+      hpBar.className = 'h-full transition-all duration-300 ' +
+        (state.hp > 65 ? 'bg-emerald-400' : state.hp > 35 ? 'bg-amber-400' : 'bg-rose-500');
+
+      for (let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById('step-' + i);
+        if (i < state.currentLevel) {
+          stepEl.className = 'flex items-center gap-1.5 text-emerald-400 font-bold';
+        } else if (i === state.currentLevel) {
+          stepEl.className = 'flex items-center gap-1.5 text-teal-300 font-bold';
+        } else {
+          stepEl.className = 'flex items-center gap-1.5 text-slate-500';
+        }
+      }
+    }
+
+    function showFeedback(title, message, type = 'success') {
+      const toast = document.getElementById('feedback-toast');
+      const titleEl = document.getElementById('feedback-title');
+      const textEl = document.getElementById('feedback-text');
+
+      toast.classList.remove('hidden', 'border-teal-400', 'border-rose-500');
+      if (type === 'success') {
+        toast.classList.add('border-teal-400');
+        titleEl.className = 'font-bold text-sm uppercase tracking-wider text-teal-400';
+      } else {
+        toast.classList.add('border-rose-500');
+        titleEl.className = 'font-bold text-sm uppercase tracking-wider text-rose-400';
+      }
+
+      titleEl.textContent = title;
+      textEl.textContent = message;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeFeedback() {
+      document.getElementById('feedback-toast').classList.add('hidden');
+    }
+
+    function penalizeError(msg) {
+      state.hp = Math.max(10, state.hp - 12);
+      state.atp = Math.max(0, state.atp - 10);
+      updateHUD();
+      showFeedback('⚠️ Descompensación Homeostática (-12% Estabilidad, -10 ATP)', msg, 'error');
+    }
+
+    function startGame() {
+      const input = document.getElementById('input-player-name').value.trim();
+      state.playerName = input || 'Endocrinólogo(a) 11°';
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('hud-bar').classList.remove('hidden');
+      document.getElementById('level-1').classList.remove('hidden');
+      updateHUD();
+    }
+
+    function verifyLevel1() {
+      const c = document.getElementById('g1-cell').value;
+      const m = document.getElementById('g1-mech').value;
+      const l = document.getElementById('g1-loop').value;
+
+      if (!c || !m || !l) {
+        showFeedback('Protocolo incompleto', 'Selecciona las 3 respuestas fisiológicas para regular la glucemia.', 'error');
+        return;
+      }
+
+      if (c === 'beta' && m === 'glut4' && l === 'correct') {
+        state.atp -= 35;
+        state.xp += 120;
+        state.currentLevel = 2;
+        updateHUD();
+        document.getElementById('level-1').classList.add('hidden');
+        document.getElementById('level-2').classList.remove('hidden');
+        showFeedback('🎉 ¡Nivel 1 Superado! (+120 XP)', 'Glucemia estabilizada en 92 mg/dL. Las células Beta liberaron Insulina promoviendo el transporte por GLUT4 y la glucogenogénesis. Avanzas al Nivel 2: Eje Hipotálamo-Hipófisis-Tiroides.', 'success');
+      } else {
+        penalizeError('Revisa el control glucémico: Ante hiperglucemia, las células Beta secretan Insulina (que moviliza GLUT4 y forma glucógeno). Ante hipoglucemia en ayuno, las células Alfa secretan Glucagón (glucogenólisis) en un bucle de retroalimentación negativa.');
+      }
+    }
+
+    function verifyLevel2() {
+      const d = document.getElementById('t2-diag').value;
+      const r = document.getElementById('t2-receptor').value;
+      const t = document.getElementById('t2-therapy').value;
+
+      if (!d || !r || !t) {
+        showFeedback('Análisis incompleto', 'Completa las 3 decisiones sobre el eje tiroideo.', 'error');
+        return;
+      }
+
+      if (d === 'correct' && r === 'correct' && t === 'correct') {
+        state.atp -= 40;
+        state.xp += 130;
+        state.currentLevel = 3;
+        updateHUD();
+        document.getElementById('level-2').classList.add('hidden');
+        document.getElementById('level-3').classList.remove('hidden');
+        showFeedback('🎉 ¡Nivel 2 Superado! (+130 XP)', 'Temperatura estabilizada en 36.7 °C y TSH normalizada. Interpretaste con precisión la pérdida de retroalimentación negativa en el hipotiroidismo primario. Avanzas al Nivel 3: Osmorregulación Renal.', 'success');
+      } else {
+        penalizeError('Recuerda cómo funciona el eje H-H-Tiroides: si la tiroides falla (T4 baja), ya no inhibe a la hipófisis, por lo que la TSH sube. Además, T3/T4 son liposolubles con receptores intracelulares.');
+      }
+    }
+
+    function verifyLevel3() {
+      const adh = document.getElementById('o3-adh').value;
+      const aqp = document.getElementById('o3-aqp').value;
+      const aldo = document.getElementById('o3-aldo').value;
+
+      if (!adh || !aqp || !aldo) {
+        showFeedback('Faltan parámetros renales', 'Completa las 3 selecciones sobre ADH y Aldosterona.', 'error');
+        return;
+      }
+
+      if (adh === 'correct' && aqp === 'correct' && aldo === 'correct') {
+        state.atp -= 40;
+        state.xp += 140;
+        state.currentLevel = 4;
+        updateHUD();
+        document.getElementById('level-3').classList.add('hidden');
+        document.getElementById('level-4').classList.remove('hidden');
+        showFeedback('🎉 ¡Nivel 3 Superado! (+140 XP)', 'Osmolaridad restaurada a 290 mOsm/L y presión arterial en 118/76 mmHg gracias a la acción conjunta de la ADH (Acuaporinas-2) y la Aldosterona (reabsorción de Na+). Avanzas al Nivel 4 Final.', 'success');
+      } else {
+        penalizeError('Verifica la fisiología renal: La neurohipófisis libera ADH (Vasopresina) para insertar Acuaporinas-2 en el túbulo colector y reabsorber agua libre; mientras la Aldosterona reabsorbe Na+ en el nefrón distal.');
+      }
+    }
+
+    function verifyLevel4() {
+      const c1 = document.getElementById('f4-cortisol').value;
+      const c2 = document.getElementById('f4-positive').value;
+      const c3 = document.getElementById('f4-steroids').value;
+
+      if (!c1 || !c2 || !c3) {
+        showFeedback('Junta médica incompleta', 'Responde los 3 casos integradores del Nivel 4.', 'error');
+        return;
+      }
+
+      if (c1 === 'correct' && c2 === 'correct' && c3 === 'correct') {
+        state.atp -= 25;
+        state.xp += 150;
+        updateHUD();
+        closeFeedback();
+
+        document.getElementById('level-4').classList.add('hidden');
+        document.getElementById('screen-victory').classList.remove('hidden');
+
+        document.getElementById('cert-name').textContent = state.playerName;
+        document.getElementById('cert-rank').textContent = getRank(state.xp);
+        document.getElementById('cert-xp').textContent = state.xp + ' XP';
+        document.getElementById('cert-hp').textContent = state.hp + '%';
+      } else {
+        penalizeError('Revisa los 3 casos finales: 1) El Cortisol promueve gluconeogénesis e inmunosupresión, 2) La Oxitocina en el parto es un bucle de retroalimentación positiva, y 3) Los esteroides exógenos apagan la secreción de GnRH, LH y FSH por retroalimentación negativa.');
+      }
+    }
+  </script>
+</body>
+</html>
